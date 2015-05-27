@@ -44,6 +44,15 @@ func main() {
 	dialWebSocket(wssURL)
 }
 
+type SlackMessage struct {
+	Type      string  `json:"type"`
+	Channel   string  `json:"channel"`
+	User      string  `json:"user"`
+	Text      string  `json:"text"`
+	TimeStamp float64 `json:"ts"`
+	Team      string  `json:"team"`
+}
+
 func dialWebSocket(wssURL string) {
 	origin := "http://ms114.slack-msgs.com/"
 	ws, err := websocket.Dial(wssURL, "", origin)
@@ -55,10 +64,27 @@ func dialWebSocket(wssURL string) {
 			log.Fatal(err)
 		}
 	*/
-	var msg = make([]byte, 512)
-	var n int
-	if n, err = ws.Read(msg); err != nil {
-		log.Fatal(err)
+	r := make(map[string]interface{})
+	for {
+		var msg = make([]byte, 512)
+		var n int
+		if n, err = ws.Read(msg); err != nil {
+			log.Println(err)
+			log.Println("Lost connection, restarting...")
+			dialWebSocket(wssURL)
+		}
+		json.Unmarshal(msg[:n], &r)
+		if r["type"] != nil {
+			t := r["type"].(string)
+			switch t {
+			case "message":
+				sm := SlackMessage{}
+				json.Unmarshal(msg[:n], &sm)
+				fmt.Println("Msg:", sm.Text)
+			}
+			fmt.Printf("Type:%v\n", string(r["type"].(string)))
+		}
+		fmt.Printf("Received: %s.\n", msg[:n])
 	}
-	fmt.Printf("Received: %s.\n", msg[:n])
+
 }
