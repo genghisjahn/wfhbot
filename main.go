@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -14,43 +15,65 @@ import (
 )
 
 var token = flag.String("t", "", "Token for bot")
+var baseURL = "https://slack.com/api/%v"
 
 func main() {
 	flag.Parse()
-	posturl := "https://slack.com/api/rtm.start"
-	form := url.Values{}
-	form.Set("token", *token)
 
-	req, reqErr := http.NewRequest("POST", posturl, bytes.NewBufferString(form.Encode()))
-	if reqErr != nil {
-		fmt.Println(reqErr)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{}
+	f := url.Values{}
 
-	resp, errDo := client.Do(req)
-	if errDo != nil {
-		fmt.Println(errDo)
+	body, cmdErr := doCommand("rtm.start", f)
+	if cmdErr != nil {
+		fmt.Println("ERROR:", cmdErr)
 	}
-	defer resp.Body.Close()
-	body, errRead := ioutil.ReadAll(resp.Body)
-	if errRead != nil {
-		fmt.Println(errRead)
-	}
-
 	result := make(map[string]interface{})
 	json.Unmarshal(body, &result)
 	wssURL := result["url"].(string)
 	dialWebSocket(wssURL)
 }
 
-type SlackMessage struct {
+type Message struct {
 	Type      string  `json:"type"`
 	Channel   string  `json:"channel"`
 	User      string  `json:"user"`
 	Text      string  `json:"text"`
 	TimeStamp float64 `json:"ts"`
 	Team      string  `json:"team"`
+}
+
+type UserType struct {
+	Type    string `json:"type"`
+	Channel string `json:"channel"`
+	User    string `json:"user"`
+}
+
+type Greeting struct {
+	Type string `json:"type"`
+}
+
+func doCommand(command string, form url.Values) ([]byte, error) {
+	posturl := fmt.Sprintf(baseURL, command)
+	if form == nil {
+		return nil, errors.New("Form is nil!")
+	}
+	form.Set("token", *token)
+	req, reqErr := http.NewRequest("POST", posturl, bytes.NewBufferString(form.Encode()))
+	if reqErr != nil {
+		return nil, reqErr
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+
+	resp, errDo := client.Do(req)
+	if errDo != nil {
+		return nil, errDo
+	}
+	defer resp.Body.Close()
+	body, errRead := ioutil.ReadAll(resp.Body)
+	if errRead != nil {
+		return nil, errRead
+	}
+	return body, nil
 }
 
 func dialWebSocket(wssURL string) {
@@ -78,13 +101,20 @@ func dialWebSocket(wssURL string) {
 			t := r["type"].(string)
 			switch t {
 			case "message":
-				sm := SlackMessage{}
-				json.Unmarshal(msg[:n], &sm)
-				fmt.Println("Msg:", sm.Text)
+				m := Message{}
+				json.Unmarshal(msg[:n], &m)
+				fmt.Println("Msg:", m.Text)
+			case "hello":
+				f := url.Values{}
+				f.Set("name", "#general")
+				doCommand("channels.join", f)
+				f2 := url.Values{}
+				f2.Set("channel", "U02LDM150")
+				f2.Set("text", "test private message")
+				f2.Set("username", "WFHBot")
+				doCommand("chat.postMessage", f2)
 			}
-			fmt.Printf("Type:%v\n", string(r["type"].(string)))
 		}
 		fmt.Printf("Received: %s.\n", msg[:n])
 	}
-
 }
