@@ -111,7 +111,8 @@ func dialWebSocket(wssURL string) {
 				f2 := url.Values{}
 				f2.Set("channel", "U02LDM150")
 				f2.Set("text", "test private message")
-				f2.Set("username", "WFHBot")
+				f2.Set("username", "wfhbot")
+				f2.Set("icon_url", "https://s3-us-west-2.amazonaws.com/slack-files2/avatars/2015-04-06/4338099509_7c661f308a0528611d81_48.jpg")
 				doCommand("chat.postMessage", f2)
 			}
 		}
