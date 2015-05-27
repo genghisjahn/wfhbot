@@ -6,8 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
+
+	"golang.org/x/net/websocket"
 )
 
 var token = flag.String("t", "", "Token for bot")
@@ -37,5 +40,25 @@ func main() {
 
 	result := make(map[string]interface{})
 	json.Unmarshal(body, &result)
-	fmt.Println(result["url"])
+	wssURL := result["url"].(string)
+	dialWebSocket(wssURL)
+}
+
+func dialWebSocket(wssURL string) {
+	origin := "http://ms114.slack-msgs.com/"
+	ws, err := websocket.Dial(wssURL, "", origin)
+	if err != nil {
+		log.Fatal(err)
+	}
+	/*
+		if _, err := ws.Write([]byte("hello, world!\n")); err != nil {
+			log.Fatal(err)
+		}
+	*/
+	var msg = make([]byte, 512)
+	var n int
+	if n, err = ws.Read(msg); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Received: %s.\n", msg[:n])
 }
