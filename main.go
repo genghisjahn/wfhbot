@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -21,19 +20,19 @@ func main() {
 
 	req, reqErr := http.NewRequest("POST", posturl, bytes.NewBufferString(form.Encode()))
 	if reqErr != nil {
-		log.Println(reqErr)
+		fmt.Println(reqErr)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	client := &http.Client{}
 
 	resp, errDo := client.Do(req)
 	if errDo != nil {
-		log.Println(errDo)
+		fmt.Println(errDo)
 	}
 	defer resp.Body.Close()
 	body, errRead := ioutil.ReadAll(resp.Body)
 	if errRead != nil {
-		log.Println(errRead)
+		fmt.Println(errRead)
 	}
 
 	result := make(map[string]interface{})
